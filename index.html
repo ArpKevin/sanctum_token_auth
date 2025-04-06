@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login and Register</title>
+    <style>
+        .csoki-card {
+            border: 1px solid #ccc;
+            padding: 10px;
+            margin: 10px;
+            border-radius: 5px;
+        }
+        .csoki-card.green {
+            background-color: green;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <h1>Login</h1>
+    <form id="loginForm">
+        <label for="loginEmail">Email:</label>
+        <input type="email" id="loginEmail" name="email" required>
+        <br>
+        <label for="loginPassword">Password:</label>
+        <input type="password" id="loginPassword" name="password" required>
+        <br>
+        <button type="submit">Login</button>
+    </form>
+
+    <h1>Register</h1>
+    <form id="registerForm">
+        <label for="name">Name:</label>
+        <input type="text" id="name" name="name" required>
+        <br>
+        <label for="registerEmail">Email:</label>
+        <input type="email" id="registerEmail" name="email" required>
+        <br>
+        <label for="registerPassword">Password:</label>
+        <input type="password" id="registerPassword" name="password" required>
+        <br>
+        <button type="submit">Register</button>
+    </form>
+
+    <button id="logoutButton" style="display:none;">Logout</button>
+
+    <div id="csokikContainer"></div>
+
+    <script>
+        // Fetch user csoki IDs
+        function fetchUserCsokiIds() {
+            const token = localStorage.getItem('token');
+            console.log('Using token for fetching user csoki IDs:', token); // Log the token being used
+
+            fetch('http://127.0.0.1:8000/api/user-csoki-ids', {
+                method: 'GET',
+                headers: {
+                    'Authorization': 'Bearer ' + token,
+                    'Content-Type': 'application/json',
+                },
+            })
+            .then(response => {
+                console.log('Response status for user csoki IDs:', response.status); // Log the response status
+                if (!response.ok) {
+                    throw new Error('Network response was not ok: ' + response.statusText);
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log('User csoki IDs fetched:', data); // Log the fetched data
+                if (Array.isArray(data.csoki_ids)) {
+                    fetchCsokik(data.csoki_ids); // Call fetchCsokik with the retrieved IDs
+                } else {
+                    alert('No csoki IDs found or data format is incorrect.');
+                }
+            })
+            .catch(error => {
+                console.error('Error fetching user csoki IDs:', error);
+                alert('An error occurred while fetching user csoki IDs: ' + error.message);
+            });
+        }
+
+        // Function to add a Csoki
+        function addCsoki(csokiId) {
+            const token = localStorage.getItem('token');
+            console.log('Using token for adding csoki:', token); // Log the token being used
+
+            fetch('http://127.0.0.1:8000/api/add-csoki', {
+                method: 'POST',
+                headers: {
+                    'Authorization': 'Bearer ' + token,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ csoki_id: csokiId }), // Send the Csoki ID
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.message) {
+                    alert('Csoki added successfully!');
+                    // Optionally, you can refresh the Csokik display or update the UI accordingly
+                } else {
+                    alert('Failed to add Csoki: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error adding Csoki:', error);
+                alert('An error occurred while adding Csoki: ' + error.message);
+            });
+        }
+
+        // Login functionality
+        document.getElementById('loginForm').addEventListener('submit', function(event) {
+            event.preventDefault();
+
+            const email = document.getElementById('loginEmail').value;
+            const password = document.getElementById('loginPassword').value;
+
+            fetch('http://127.0.0.1:8000/api/login', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ email, password }),
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.token) {
+                    localStorage.setItem('token', data.token);
+                    alert('Login successful!');
+                    document.getElementById('logoutButton').style.display = 'block';
+                    document.getElementById('loginForm').style.display = "none";
+                    fetchUserCsokiIds(); // Fetch user csoki IDs after login
+                } else {
+                    alert('Login failed: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('An error occurred during login.');
+            });
+        });
+
+        // Register functionality
+        document.getElementById('registerForm').addEventListener('submit', function(event) {
+            event.preventDefault();
+
+            const name = document.getElementById('name').value;
+            const email = document.getElementById('registerEmail').value;
+            const password = document.getElementById('registerPassword').value;
+
+            fetch('http://127.0.0.1:8000/api/register', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ name, email, password }),
+            })
+            .then(response => response.json())
+            .then(data => {
+                // Remove the token handling and just show a success message
+                if (data.message) {
+                    alert('Registration successful!.');
+                    document.getElementById('logoutButton').style.display = 'block';
+                } else {
+                    alert('Registration failed: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('An error occurred during registration.');
+            });
+        });
+
+        // Fetch all csokik and display them
+        function fetchCsokik(csokiIds) {
+            const token = localStorage.getItem('token');
+            console.log('Using token:', token); // Log the token being used
+
+            fetch('http://127.0.0.1:8000/api/csokik', {
+                method: 'GET',
+                headers: {
+                    'Authorization': 'Bearer ' + token,
+                    'Content-Type': 'application/json',
+                },
+            })
+            .then(response => {
+                console.log('Response status:', response.status); // Log the response status
+                if (!response.ok) {
+                    throw new Error('Network response was not ok: ' + response.statusText);
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log('Data fetched:', data); // Log the fetched data
+                const csokikContainer = document.getElementById('csokikContainer');
+                csokikContainer.innerHTML = ''; // Clear previous content
+
+                // Check if csokik exists in the response
+                if (Array.isArray(data)) {
+                    console.log('Csokik array:', data); // Log the csokik array
+                    data.forEach(csoki => {
+                        const card = document.createElement('div');
+                        card.className = 'csoki-card' + (csokiIds.includes(csoki.id) ? ' green' : '');
+                        card.innerHTML = `
+                            <h3>${csoki.nev}</h3>
+                            <p>Price: ${csoki.ara}</p>
+                            <p>In Stock: ${csoki.raktaron ? 'Yes' : 'No'}</p>
+                            ${csokiIds.includes(csoki.id) ? '' : '<button class="add-button" data-id="' + csoki.id + '" onclick="addCsoki(' + csoki.id + ')">+</button>'}
+                        `;
+                        csokikContainer.appendChild(card);
+                    });
+                } else {
+                    alert('No csokik found or data format is incorrect.');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('An error occurred while fetching csokik: ' + error.message);
+            });
+        }
+
+        // Logout functionality
+        document.getElementById('logoutButton').addEventListener('click', function() {
+            fetch('http://127.0.0.1:8000/api/logout', {
+                method: 'POST',
+                headers: {
+                    'Authorization': 'Bearer ' + localStorage.getItem('token'),
+                    'Content-Type': 'application/json',
+                },
+            })
+            .then(response => response.json())
+            .then(data => {
+                alert(data.message);
+                localStorage.removeItem('token');
+                document.getElementById('logoutButton').style.display = 'none';
+                document.getElementById('loginForm').style.display = "block";
+                document.getElementById('csokikContainer').innerHTML = ''; // Clear csokik display
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('An error occurred during logout.');
+            });
+        });
+    </script>
+</body>
+</html>
